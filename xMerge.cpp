@@ -9,6 +9,14 @@
 
 using namespace std;
 
+void sorryButExit(int value)
+{
+	if(value != 0) {
+		cerr << endl <<"More info on http://red.eltex.loc/projects/gpon/wiki/XMerge" << endl;
+	}
+	exit(value);
+}
+
 void ReplaceStringInPlace(std::string& subject, const std::string& search,
                           const std::string& replace) {
     size_t pos = 0;
@@ -50,8 +58,6 @@ public:
 	void parseXMergeRevisions();
 };
 
-
-
 void SvnInfo::parseXMergeRevisions()
 {
 	stringstream regexStram;
@@ -75,7 +81,7 @@ void SvnInfo::parseXMergeRevisions()
 		if (regex_match(x, regex("(R[[:digit:]]+[-]R[[:digit:]]+|R[[:digit:]]+)+")) == false)
 		{
 			cerr << "Revision syntax check failed (" << x << ")" << endl;
-			exit(1);
+			sorryButExit(1);
 		}
 
 		unsigned range_start, range_end;
@@ -89,7 +95,7 @@ void SvnInfo::parseXMergeRevisions()
 				if(start == string::npos)
 				{
 					cerr << "No revisions found in revisions enumeration" << endl;
-					exit (1);
+					sorryButExit(1);
 				}
 				start += 1;
 				continue;
@@ -111,7 +117,7 @@ void SvnInfo::parseXMergeRevisions()
 				if (range_start > range_end)
 				{
 					cerr << "Wrong range used: start revision greater then end of revisions range" << endl;
-					exit(1);
+					sorryButExit(1);
 				}
 				for (unsigned i = range_start + 1; i <= range_end; i++)
 				{
@@ -136,7 +142,7 @@ void SvnInfo::extractValueOfKey(string path, string key, string &value) {
 	ifstream fin(path);
 	if (fin.is_open() == false) {
 		cerr << "Can't open " << path << endl;
-		exit(1);
+		sorryButExit(1);
 	}
 	string keyStr = "K ";
 	stringstream keyStream;
@@ -147,7 +153,7 @@ void SvnInfo::extractValueOfKey(string path, string key, string &value) {
 				&& tmp.compare(key) == 0 && getline(fin, tmp)) {
 			if (tmp.compare(0, strlen("V "), "V ") != 0) {
 				cerr << "Unexpected string after \"K\" " << tmp << endl;
-				exit(1);
+				sorryButExit(1);
 			}
 			tmp.erase(0, strlen("V "));
 			stringstream(tmp) >> valueLength;
@@ -163,7 +169,7 @@ void SvnInfo::extractValueOfKey(string path, string key, string &value) {
 void SvnInfo::buildMessage() {
 
 	if (this->revisions.size() == 0) {
-		exit(0);
+		sorryButExit(0);
 	}
 	stringstream mergeStream;
 	mergeStream << "[" << this->actionStr;
@@ -189,7 +195,7 @@ void SvnInfo::buildMessage() {
 		ifstream fin(revsPath_s);
 		if (fin.is_open() == false) {
 			cerr << "Can't open " << revsPath_s << endl;
-			exit(1);
+			sorryButExit(1);
 		}
 		string tmp;
 		while (getline(fin, tmp)) {
@@ -228,7 +234,7 @@ void SvnInfo::editTransactionInfo() {
 				&& tmp.compare(key) == 0 && getline(fin, tmp)) {
 			if (tmp.compare(0, strlen("V "), "V ") != 0) {
 				cerr << "Unexpected string after \"K\" " << tmp << endl;
-				exit(1);
+				sorryButExit(1);
 			}
 			of << keyStr << endl;
 			of << key << endl;
@@ -254,7 +260,7 @@ void SvnInfo::getSharded() {
 	ifstream fin(formatPath);
 	if (fin.is_open() == false) {
 		cerr << "Can't open " << formatPath << endl;
-		exit(1);
+		sorryButExit(1);
 	}
 	this->shard = 0;
 	string s_token = string("layoutsharded");
@@ -278,7 +284,7 @@ bool SvnInfo::isItMyProject() {
 	ifstream fin(changesPath);
 	if (fin.is_open() == false) {
 		cerr << "Can't open " << changesPath << " (bad transaction)" << endl;
-		exit(1);
+		sorryButExit(1);
 	}
 	regex myProjects(".*gpon.*|.*ma4000.*");
 	while (getline(fin, tmp)) {
@@ -300,7 +306,7 @@ void SvnInfo::checkSvnMessage() {
 	regex xRefs(".*[[:space:]]#[[:digit:]]+.*$");
 	if (regex_match((msg), xRefs) == false) {
 		cerr << "You MUST set reference to redmine issue" << endl;
-		exit(1);
+		sorryButExit(1);
 	}
 	regex xMerge_reg(".*\\[.*xmerge[[:space:]].*\\].*");
 	xMerge = regex_match((msg), xMerge_reg);
@@ -311,19 +317,19 @@ void SvnInfo::checkSvnMessage() {
 	regex merge_reg(".*merge.*");
 	if (xMerge == false && regex_match((msg), merge_reg) == true) {
 		cerr << "Use xMERGE instead merge" << endl;
-		exit(1);
+		sorryButExit(1);
 	}
 	regex revert_reg(".*revert.*");
 	if (xRevert == false && regex_match((msg), revert_reg) == true) {
 		cerr << "Use xREVERT instead revert" << endl;
-		exit(1);
+		sorryButExit(1);
 	}
 
 	if (xMerge == true && xRevert == true) {
 		cerr << "Don't merge and revert at the same time" << endl;
-		exit(1);
+		sorryButExit(1);
 	} else if(xMerge == false && xRevert == false) {
-		exit(0);
+		sorryButExit(0);
 	} else if(xMerge == true) {
 		this->actionStr = "MERGE";
 	} else {
@@ -346,11 +352,11 @@ SvnInfo::SvnInfo(string repos, string txn)
 
 	if(this->message.length() == 0) {
 		cerr << "Please comment your commit!" << endl;
-		exit(1);
+		sorryButExit(1);
 	}
 
 	if(isItMyProject() == false) {
-		exit(0);
+		sorryButExit(0);
 	}
 
 	getSharded();
@@ -366,9 +372,15 @@ SvnInfo::SvnInfo(string repos, string txn)
 
 int main(int argc, char **argv)
 {
-	if(argc != 3)
-	{
-		exit(0);
+	if(argc == 2) {
+		string arg0 = string(argv[1]);
+		if(arg0.compare("--version") == 0) {
+			cout << "Version 1.0" << endl << endl << "Written by Alexey Lapshin" << endl;
+			return 0;
+		}
+	}
+	if(argc != 3) {
+		return 0;
 	}
 
 	string arg0 = string(argv[1]);
