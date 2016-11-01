@@ -6,14 +6,8 @@
 #include <string>
 #include <regex>
 #include <list>
-#include <unistd.h>
 
 using namespace std;
-
-void replaceWhitespaces(string &s)
-{
-	s = regex_replace(s, regex("\\s*,*"), "");
-}
 
 void ReplaceStringInPlace(std::string& subject, const std::string& search,
                           const std::string& replace) {
@@ -22,81 +16,6 @@ void ReplaceStringInPlace(std::string& subject, const std::string& search,
          subject.replace(pos, search.length(), replace);
          pos += replace.length();
     }
-}
-
-vector<unsigned> parseXMergeRevisions(string s)
-{
-	vector<unsigned> revisionsVector;
-	s = regex_replace(s, regex("\\s*,*"), "");
-	regex xmergeRegx = regex("\\[xmerge.*\\]");
-	smatch m;
-	transform(s.begin(), s.end(), s.begin(), ::tolower);
-
-	if (regex_search(s, m, xmergeRegx) == true)
-	{
-		size_t start = 0, end = 0;
-		string tmp;
-		string x = string(m[0]);
-		x.erase(x.length() - 1, x.length());
-		x.erase(0, strlen("[xmerge"));
-
-		if (regex_match(x, regex("(r[[:digit:]]+[-]r[[:digit:]]+|r[[:digit:]]+)+")) == false)
-		{
-			cerr << "xMERGE revision syntax check failed (" << x << ")" << endl;
-			exit(1);
-		}
-
-		unsigned range_start, range_end;
-		while (1)
-		{
-			range_start = 0;
-			range_end = 0;
-			if(start == 0)
-			{
-				x.find_first_of('r', 0);
-				if(start == string::npos)
-				{
-					cerr << "No revisions found in xMERGE tag" << endl;
-					exit (1);
-				}
-				start += 1;
-				continue;
-			}
-			end = x.find_first_of('r', start);
-
-			tmp = x.substr(start, end - start);
-			if (tmp.find_last_of('-', end) != string::npos)
-			{
-				end = x.find_first_of('r', end + 1);
-				tmp = x.substr(start, end - start);
-				tmp = regex_replace(tmp, regex("-r"), " ");
-			}
-
-			stringstream(tmp) >> range_start >> range_end;
-			revisionsVector.push_back(range_start);
-			if (range_end != 0)
-			{
-				if (range_start > range_end)
-				{
-					cerr << "Wrong range used: start revision greater then end of revisions range" << endl;
-					exit(1);
-				}
-				for (unsigned i = range_start + 1; i <= range_end; i++)
-				{
-					revisionsVector.push_back(i);
-				}
-			}
-			if(end == string::npos)
-			{
-				break;
-			}
-			start = end + 1;
-
-		}
-		sort(revisionsVector.begin(), revisionsVector.end());
-		revisionsVector.erase(unique(revisionsVector.begin(), revisionsVector.end()), revisionsVector.end());
-	}
-	return revisionsVector;
 }
 
 class SvnRevisionInfo
@@ -118,15 +37,98 @@ private:
 	unsigned shard;
 	string message;
 	string buildedMessage;
+	string actionStr;
+	vector<unsigned> revisions;
 public:
-	vector<SvnRevisionInfo> revisionsList;
 	SvnInfo(string, string);
 	void extractValueOfKey(string path, string key, string &value);
 	void buildMessage();
 	void editTransactionInfo();
 	void getSharded();
 	bool isItMyProject();
+	void checkSvnMessage();
+	void parseXMergeRevisions();
 };
+
+
+
+void SvnInfo::parseXMergeRevisions()
+{
+	stringstream regexStram;
+	string s = this->message;
+	transform(s.begin(), s.end(), s.begin(), ::toupper);
+
+	s = regex_replace(s, regex("\\s*,*"), "");
+
+	regexStram << "^\\[X" << this->actionStr<< ".*\\]";
+	regex xmergeRegx = regex(regexStram.str());
+	smatch m;
+
+	if (regex_search(s, m, xmergeRegx) == true)
+	{
+		size_t start = 0, end = 0;
+		string tmp;
+		string x = string(m[0]);
+		x.erase(x.length() - 1, x.length());
+		x.erase(0, this->actionStr.length() + 2);
+
+		if (regex_match(x, regex("(R[[:digit:]]+[-]R[[:digit:]]+|R[[:digit:]]+)+")) == false)
+		{
+			cerr << "Revision syntax check failed (" << x << ")" << endl;
+			exit(1);
+		}
+
+		unsigned range_start, range_end;
+		while (1)
+		{
+			range_start = 0;
+			range_end = 0;
+			if(start == 0)
+			{
+				start = x.find_first_of('R', 0);
+				if(start == string::npos)
+				{
+					cerr << "No revisions found in revisions enumeration" << endl;
+					exit (1);
+				}
+				start += 1;
+				continue;
+			}
+			end = x.find_first_of('R', start);
+
+			tmp = x.substr(start, end - start);
+			if (tmp.find_last_of('-', end) != string::npos)
+			{
+				end = x.find_first_of('R', end + 1);
+				tmp = x.substr(start, end - start);
+				tmp = regex_replace(tmp, regex("-R"), " ");
+			}
+
+			stringstream(tmp) >> range_start >> range_end;
+			this->revisions.push_back(range_start);
+			if (range_end != 0)
+			{
+				if (range_start > range_end)
+				{
+					cerr << "Wrong range used: start revision greater then end of revisions range" << endl;
+					exit(1);
+				}
+				for (unsigned i = range_start + 1; i <= range_end; i++)
+				{
+					this->revisions.push_back(i);
+				}
+			}
+			if(end == string::npos)
+			{
+				break;
+			}
+			start = end + 1;
+
+		}
+		sort(this->revisions.begin(), this->revisions.end());
+		this->revisions.erase(unique(this->revisions.begin(), this->revisions.end()), this->revisions.end());
+	}
+}
 
 void SvnInfo::extractValueOfKey(string path, string key, string &value) {
 	int valueLength;
@@ -159,21 +161,21 @@ void SvnInfo::extractValueOfKey(string path, string key, string &value) {
 }
 
 void SvnInfo::buildMessage() {
-	vector<unsigned> v = parseXMergeRevisions(this->message);
-	if (v.size() == 0) {
+
+	if (this->revisions.size() == 0) {
 		exit(0);
 	}
 	stringstream mergeStream;
-	mergeStream << "[MERGE";
-	for (int i = 0; i < v.size(); i++) {
+	mergeStream << "[" << this->actionStr;
+	for (int i = 0; i < this->revisions.size(); i++) {
 		if (i > 0) {
 			mergeStream << ",";
 		}
-		mergeStream << " r" << v.at(i);
+		mergeStream << " r" << this->revisions.at(i);
 	}
 	mergeStream << this->message.substr(this->message.find_first_of(']'));
-	for (int i = 0; i < v.size(); i++) {
-		SvnRevisionInfo rInfo = SvnRevisionInfo(v.at(i));
+	for (int i = 0; i < this->revisions.size(); i++) {
+		SvnRevisionInfo rInfo = SvnRevisionInfo(this->revisions.at(i));
 		string keyAuthor = "svn:author";
 		string keyLog = "svn:log";
 		stringstream revpropsPath;
@@ -257,7 +259,7 @@ void SvnInfo::getSharded() {
 	this->shard = 0;
 	string s_token = string("layoutsharded");
 	while (getline(fin, tmp)) {
-		replaceWhitespaces(tmp);
+		tmp = regex_replace(tmp, regex("[[:space:]]*"), "");
 		transform(tmp.begin(), tmp.end(), tmp.begin(), ::tolower);
 		if (tmp.compare(0, s_token.length(), s_token) == 0) {
 			tmp.erase(0, s_token.length());
@@ -286,7 +288,49 @@ bool SvnInfo::isItMyProject() {
 		}
 	}
 	fin.close();
-	return isMyProject == false;
+	return isMyProject;
+}
+
+void SvnInfo::checkSvnMessage() {
+	bool xMerge;
+	bool xRevert;
+	string msg = this->message;
+	transform(msg.begin(), msg.end(), msg.begin(), ::tolower);
+	ReplaceStringInPlace(msg, "\n", "");
+	regex xRefs(".*[[:space:]]#[[:digit:]]+.*$");
+	if (regex_match((msg), xRefs) == false) {
+		cerr << "You MUST set reference to redmine issue" << endl;
+		exit(1);
+	}
+	regex xMerge_reg(".*\\[.*xmerge[[:space:]].*\\].*");
+	xMerge = regex_match((msg), xMerge_reg);
+
+	regex xRevert_reg(".*\\[.*xrevert[[:space:]].*\\].*");
+	xRevert = regex_match((msg), xRevert_reg);
+
+	regex merge_reg(".*merge.*");
+	if (xMerge == false && regex_match((msg), merge_reg) == true) {
+		cerr << "Use xMERGE instead merge" << endl;
+		exit(1);
+	}
+	regex revert_reg(".*revert.*");
+	if (xRevert == false && regex_match((msg), revert_reg) == true) {
+		cerr << "Use xREVERT instead revert" << endl;
+		exit(1);
+	}
+
+	if (xMerge == true && xRevert == true) {
+		cerr << "Don't merge and revert at the same time" << endl;
+		exit(1);
+	} else if(xMerge == false && xRevert == false) {
+		exit(0);
+	} else if(xMerge == true) {
+		this->actionStr = "MERGE";
+	} else {
+		this->actionStr = "REVERT";
+	}
+
+	return;
 }
 
 SvnInfo::SvnInfo(string repos, string txn)
@@ -297,14 +341,23 @@ SvnInfo::SvnInfo(string repos, string txn)
 	this->propsPath = repos;
 	this->propsPath.append("/db/transactions/" + txn + ".txn/props");
 
+	string key = "svn:log";
+	extractValueOfKey(this->propsPath, key, this->message);
+
+	if(this->message.length() == 0) {
+		cerr << "Please comment your commit!" << endl;
+		exit(1);
+	}
+
 	if(isItMyProject() == false) {
 		exit(0);
 	}
 
 	getSharded();
 
-	string key = "svn:log";
-	extractValueOfKey(this->propsPath, key, this->message);
+	checkSvnMessage();
+
+	parseXMergeRevisions();
 
 	buildMessage();
 
