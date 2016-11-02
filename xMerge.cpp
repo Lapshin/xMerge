@@ -178,14 +178,14 @@ void SvnInfo::buildMessage() {
 
 	stringstream mergeStream;
 	mergeStream << "[" << this->actionStr;
-	for (int i = 0; i < this->revisions.size(); i++) {
+	for (unsigned i = 0; i < this->revisions.size(); i++) {
 		if (i > 0) {
 			mergeStream << ",";
 		}
 		mergeStream << " r" << this->revisions.at(i);
 	}
 	mergeStream << this->message.substr(this->message.find_first_of(']'));
-	for (int i = 0; i < this->revisions.size(); i++) {
+	for (unsigned i = 0; i < this->revisions.size(); i++) {
 		SvnRevisionInfo rInfo = SvnRevisionInfo(this->revisions.at(i));
 		unsigned revShardFolder = this->shard == 0 ? 0 : (rInfo.revision / this->shard);
 		string keyAuthor = "svn:author";
@@ -391,7 +391,7 @@ int main(int argc, char **argv)
 	if(argc == 2) {
 		string arg0 = string(argv[1]);
 		if(arg0.compare("--version") == 0) {
-			cout << "Version 1.2" << endl << endl << "Written by Alexey Lapshin" << endl;
+			cout << "Version 1.3" << endl << endl << "Written by Alexey Lapshin" << endl;
 			return 0;
 		}
 	}
@@ -402,6 +402,6 @@ int main(int argc, char **argv)
 	string arg0 = string(argv[1]);
 	string arg1 = string(argv[2]);
 
-	unique_ptr<SvnInfo> svnInfo = make_unique<SvnInfo>(arg0, arg1);
+	SvnInfo svnInfo = SvnInfo(arg0, arg1);
 	return 0;
 }
