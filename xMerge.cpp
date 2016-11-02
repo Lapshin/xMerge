@@ -169,8 +169,13 @@ void SvnInfo::extractValueOfKey(string path, string key, string &value) {
 void SvnInfo::buildMessage() {
 
 	if (this->revisions.size() == 0) {
-		sorryButExit(0);
+		cerr << "Unexpected value of revisions count" << endl;
+		sorryButExit(1);
+	} else if(this->revisions.size() > 50) {
+		cerr << "Too many revisions in your message. Limit is 50" << endl;
+		sorryButExit(1);
 	}
+
 	stringstream mergeStream;
 	mergeStream << "[" << this->actionStr;
 	for (int i = 0; i < this->revisions.size(); i++) {
@@ -375,7 +380,7 @@ int main(int argc, char **argv)
 	if(argc == 2) {
 		string arg0 = string(argv[1]);
 		if(arg0.compare("--version") == 0) {
-			cout << "Version 1.0" << endl << endl << "Written by Alexey Lapshin" << endl;
+			cout << "Version 1.1" << endl << endl << "Written by Alexey Lapshin" << endl;
 			return 0;
 		}
 	}
