@@ -187,15 +187,16 @@ void SvnInfo::buildMessage() {
 	mergeStream << this->message.substr(this->message.find_first_of(']'));
 	for (int i = 0; i < this->revisions.size(); i++) {
 		SvnRevisionInfo rInfo = SvnRevisionInfo(this->revisions.at(i));
+		unsigned revShardFolder = this->shard == 0 ? 0 : (rInfo.revision / this->shard);
 		string keyAuthor = "svn:author";
 		string keyLog = "svn:log";
 		stringstream revpropsPath;
-		revpropsPath << this->repos << "/db/revprops/" << rInfo.revision / this->shard << "/" << rInfo.revision;
+		revpropsPath << this->repos << "/db/revprops/" << revShardFolder << "/" << rInfo.revision;
 		string revpropsPath_s = revpropsPath.str();
 		extractValueOfKey(revpropsPath_s, keyAuthor, rInfo.author);
 		extractValueOfKey(revpropsPath_s, keyLog, rInfo.message);
 		stringstream revsPath;
-		revsPath << this->repos << "/db/revs/" << rInfo.revision / this->shard << "/" << rInfo.revision;
+		revsPath << this->repos << "/db/revs/" << revShardFolder << "/" << rInfo.revision;
 		string revsPath_s = revsPath.str();
 		ifstream fin(revsPath_s);
 		if (fin.is_open() == false) {
@@ -305,12 +306,15 @@ bool SvnInfo::isItMyProject() {
 void SvnInfo::checkSvnMessage() {
 	bool xMerge;
 	bool xRevert;
+	bool printUsage = false;
 	string msg = this->message;
 	transform(msg.begin(), msg.end(), msg.begin(), ::tolower);
 	ReplaceStringInPlace(msg, "\n", "");
-	regex xRefs(".*[[:space:]]#[[:digit:]]+.*$");
+	regex xRefs(".*(refs|fixes)[[:space:]]#[[:digit:]]+.*");
 	if (regex_match((msg), xRefs) == false) {
-		cerr << "You MUST set reference to redmine issue" << endl;
+		cerr << "You MUST set reference to redmine issue." << endl <<
+				"Use keywords \"refs\" or \"fixes\"" << endl <<
+				"Example: refs #69" << endl;
 		sorryButExit(1);
 	}
 	regex xMerge_reg(".*\\[.*xmerge[[:space:]].*\\].*");
@@ -322,11 +326,18 @@ void SvnInfo::checkSvnMessage() {
 	regex merge_reg(".*merge.*");
 	if (xMerge == false && regex_match((msg), merge_reg) == true) {
 		cerr << "Use xMERGE instead merge" << endl;
-		sorryButExit(1);
+		cerr << "xMERGE example: [xmerge ";
+		printUsage = true;
 	}
 	regex revert_reg(".*revert.*");
-	if (xRevert == false && regex_match((msg), revert_reg) == true) {
+	if (printUsage == false && xRevert == false && regex_match((msg), revert_reg) == true) {
 		cerr << "Use xREVERT instead revert" << endl;
+		cerr << "xREVERT example: [xrevert ";
+		printUsage = true;
+	}
+
+	if(printUsage == true) {
+		cerr << " r1, r2, r20-r21, r5] Your original comment bla-bla refs #0000" << endl;
 		sorryButExit(1);
 	}
 
@@ -380,7 +391,7 @@ int main(int argc, char **argv)
 	if(argc == 2) {
 		string arg0 = string(argv[1]);
 		if(arg0.compare("--version") == 0) {
-			cout << "Version 1.1" << endl << endl << "Written by Alexey Lapshin" << endl;
+			cout << "Version 1.2" << endl << endl << "Written by Alexey Lapshin" << endl;
 			return 0;
 		}
 	}
