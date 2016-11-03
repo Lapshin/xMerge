@@ -33,7 +33,7 @@ public:
 	string author;
 	string branch;
 	string message;
-	SvnRevisionInfo(unsigned r){ revision = r; };
+	SvnRevisionInfo(unsigned r){ revision = r; branch = "Not found"; };
 };
 
 class SvnInfo
@@ -204,13 +204,18 @@ void SvnInfo::buildMessage() {
 			sorryButExit(1);
 		}
 		string tmp;
+		string cpath = "cpath:";
+		regex reg_ex(".*/branches/.*?/|.*trunk/");
+		smatch m;
 		while (getline(fin, tmp)) {
-			if (tmp.compare(0, strlen("copyroot:"), "copyroot:") == 0) {
+			if (tmp.compare(0, cpath.length(), cpath) == 0) {
 				string empty_s;
-				int empty_i;
-				stringstream(tmp) >> empty_s >> empty_i >> rInfo.branch
-						>> empty_s;
-				break; /*read only first*/
+				stringstream(tmp) >> empty_s >> tmp;
+
+				if (regex_search(tmp, m, reg_ex) == true) {
+					rInfo.branch = string(m[0]);
+					break;
+				}
 			}
 		}
 		fin.close();
