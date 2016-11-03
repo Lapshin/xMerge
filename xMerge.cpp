@@ -66,7 +66,7 @@ void SvnInfo::parseXMergeRevisions()
 
 	s = regex_replace(s, regex("\\s*,*"), "");
 
-	regexStram << "^\\[X" << this->actionStr<< ".*\\]";
+	regexStram << "^\\[X" << this->actionStr<< ".*?\\]";
 	regex xmergeRegx = regex(regexStram.str());
 	smatch m;
 
@@ -322,10 +322,10 @@ void SvnInfo::checkSvnMessage() {
 				"Example: refs #69" << endl;
 		sorryButExit(1);
 	}
-	regex xMerge_reg(".*\\[.*xmerge[[:space:]].*\\].*");
+	regex xMerge_reg(".*\\[.*xmerge[[:space:]].*?\\].*");
 	xMerge = regex_match((msg), xMerge_reg);
 
-	regex xRevert_reg(".*\\[.*xrevert[[:space:]].*\\].*");
+	regex xRevert_reg(".*\\[.*xrevert[[:space:]].*?\\].*");
 	xRevert = regex_match((msg), xRevert_reg);
 
 	regex merge_reg(".*merge.*");
@@ -396,7 +396,7 @@ int main(int argc, char **argv)
 	if(argc == 2) {
 		string arg0 = string(argv[1]);
 		if(arg0.compare("--version") == 0) {
-			cout << "Version 1.3" << endl << endl << "Written by Alexey Lapshin" << endl;
+			cout << "Version 1.4" << endl << endl << "Written by Alexey Lapshin" << endl;
 			return 0;
 		}
 	}
