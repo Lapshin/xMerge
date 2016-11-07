@@ -252,8 +252,7 @@ void SvnInfo::editTransactionInfo() {
 			of << "V " << this->buildedMessage.length() << endl;
 			of.write(this->buildedMessage.c_str(),
 					this->buildedMessage.length());
-			of << endl;
-			getline(fin, tmp);
+			fin.seekg(this->message.length() , fin.cur);
 			continue;
 		}
 		of << tmp << endl;
@@ -396,7 +395,7 @@ int main(int argc, char **argv)
 	if(argc == 2) {
 		string arg0 = string(argv[1]);
 		if(arg0.compare("--version") == 0) {
-			cout << "Version 1.4" << endl << endl << "Written by Alexey Lapshin" << endl;
+			cout << "Version 1.5" << endl << endl << "Written by Alexey Lapshin" << endl;
 			return 0;
 		}
 	}
