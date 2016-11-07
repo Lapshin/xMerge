@@ -314,7 +314,7 @@ void SvnInfo::checkSvnMessage() {
 	string msg = this->message;
 	transform(msg.begin(), msg.end(), msg.begin(), ::tolower);
 	ReplaceStringInPlace(msg, "\n", "");
-	regex xRefs(".*(refs|fixes)[[:space:]]#[[:digit:]]+.*");
+	regex xRefs(".*(refs|fixes)[[:space:]]#[[:digit:]]+([[:space:]]|\\)|$).*");
 	if (regex_match((msg), xRefs) == false) {
 		cerr << "You MUST set reference to redmine issue." << endl <<
 				"Use keywords \"refs\" or \"fixes\"" << endl <<
@@ -395,7 +395,7 @@ int main(int argc, char **argv)
 	if(argc == 2) {
 		string arg0 = string(argv[1]);
 		if(arg0.compare("--version") == 0) {
-			cout << "Version 1.5" << endl << endl << "Written by Alexey Lapshin" << endl;
+			cout << "Version 1.6" << endl << endl << "Written by Alexey Lapshin" << endl;
 			return 0;
 		}
 	}
