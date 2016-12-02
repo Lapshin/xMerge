@@ -157,9 +157,9 @@ void SvnInfo::extractValueOfKey(string path, string key, string &value) {
 			}
 			tmp.erase(0, strlen("V "));
 			stringstream(tmp) >> valueLength;
-			char* buf = (char*) (calloc(valueLength, 1));
+			char* buf = (char*) (calloc(valueLength + 1, 1));
 			fin.read(buf, valueLength);
-			value = buf;
+			value = string(buf);
 			free(buf);
 			break;
 		}
@@ -395,7 +395,7 @@ int main(int argc, char **argv)
 	if(argc == 2) {
 		string arg0 = string(argv[1]);
 		if(arg0.compare("--version") == 0) {
-			cout << "Version 1.6" << endl << endl << "Written by Alexey Lapshin" << endl;
+			cout << "Version 1.7" << endl << endl << "Written by Alexey Lapshin" << endl;
 			return 0;
 		}
 	}
